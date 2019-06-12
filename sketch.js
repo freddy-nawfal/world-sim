@@ -1,8 +1,6 @@
 var canvasX = window.innerWidth;
 var canvasY = window.innerHeight;
 
-var randomMap = [];
-
 var tileSize = 10;
 
 var globalMap = new Array(Math.floor(canvasX/tileSize));
@@ -11,7 +9,7 @@ for (i=0; i<canvasX/tileSize; i++) globalMap[i] = new Array(Math.floor(canvasY/t
 function createMap(){
     for (var x = 0; x < globalMap.length; x++) {
 		for (var y = 0; y < globalMap[x].length; y++) {
-            var c = 255 * noise(0.05 * x, 0.05 * y);
+            var c = 255 * noise(0.1 * x, 0.1 * y);
             var type;
             if(c < 100) type = "water";
             if(c >= 100 && c < 120) type = "sand";
@@ -27,27 +25,6 @@ function createMap(){
             globalMap[x][y] = type;
         }
     }
-    
-
-    for (var x = 0; x < canvasX; x+=10) {
-		for (var y = 0; y < canvasY; y+=10) {
-            var c = 255 * noise(0.01 * x, 0.01 * y);
-            var type;
-            if(c < 100) type = "water";
-            if(c >= 100 && c < 120) type = "sand";
-            if(c >= 120 && c < 255) type = "land";
-
-            // Generating food
-            if(type == "land"){ 
-                var r = Math.floor(Math.random() * 100);
-                if(r > 95){
-                    type = "food";
-                }
-            }
-
-            randomMap.push([x, y, type]);
-		}		
-  	}
 }
 
 
@@ -84,20 +61,6 @@ function drawMap(){
             rect(x*tileSize, y*tileSize, tileSize, tileSize);
         }
     }
-    /*for (var m = 0; m < randomMap.length; m++) {
-        var el = randomMap[m];
-        var x = el[0];
-        var y = el[1];
-        var type = el[2];
-
-        var col;
-        if(type == "water") col = color('#00BAFF');
-        if(type == "sand") col = color('#E8BB45');
-        if(type == "land") col = color('#2EC624');
-        if(type == "food") col = color('#E0FF00')
-        fill(col);
-        rect(x, y, 10, 10);
-  	}*/
 }
 
 // MOBS
@@ -108,7 +71,7 @@ function createMobs(){
             var type = globalMap[x][y];
             var r = Math.random() * 100;
             if(r > 99.9 && type != "water"){
-                mobs.push(new Mob((x*tileSize)+(tileSize/2), (y*tileSize)+(tileSize/2)));
+                mobs.push(new Mob(x, y));
             }
         }
     }
@@ -119,14 +82,16 @@ function drawMobs(){
     textAlign(CENTER);
     for (let i = 0; i < mobs.length; i++) {
         var mob = mobs[i];
+        var mobX = (mob.x*tileSize)+(tileSize/2);
+        var mobY = (mob.y*tileSize)+(tileSize/2);
 
         // Field of view
         noFill();
-        circle(mob.x, mob.y, (mob.fov*(2*tileSize)));
+        circle(mobX, mobY, (mob.fov*(2*tileSize)));
 
         // Mob
         fill(color(mob.color))
-        circle(mob.x, mob.y, tileSize);
+        circle(mobX, mobY, tileSize);
 
         // Text 
         var hungerPercentage = Math.round(mob.hungerPercentage()*100);
@@ -135,11 +100,11 @@ function drawMobs(){
 
         fill(color("white"));
         if(predominatingNeed == "hunger") fill(color("red"));
-        text('H: '+hungerPercentage+'%', mob.x, mob.y-15);
+        text('H: '+hungerPercentage+'%', mobX, mobY-15);
 
         fill(color("white"));
         if(predominatingNeed == "thirst") fill(color("red"));
-        text('T: '+thirstPercentage+'%', mob.x, mob.y-5);
+        text('T: '+thirstPercentage+'%', mobX, mobY-5);
     }
 }
 
@@ -165,18 +130,26 @@ function moveMobs(){
         // Finding the nearest spot to eat/dring
         mob.nextMove = false;
         mob.closestTarget.target = false;
-        for (var m = 0; m < randomMap.length; m++) {
-            var el = randomMap[m];
-            var x = el[0];
-            var y = el[1];
-            var type = el[2];
 
-            // Searching for nearest place to drink
-            if(predominatingNeed == "thirst" && type == "water"){ 
-                var distanceX = x-mob.x;
-                var distanceY = y-mob.y;
-                var distance = Math.sqrt(distanceX*distanceX + distanceY*distanceY);
-                if(distance <= ((mob.fov*10)+5)){
+        var minX = mob.x-mob.fov;
+        var maxX = mob.x+mob.fov;
+        if(minX<0)minX = 0;
+        if(maxX>globalMap.length)maxX = globalMap.length;
+
+        var minY = mob.y-mob.fov;
+        var maxY = mob.y+mob.fov;
+        if(minY<0)minY = 0;
+        if(maxY>globalMap[0].length)maxY = globalMap[0].length;
+
+        for (var x = minX; x < maxX; x++) {
+            for (var y = minY; y < maxY; y++) {
+                var type = globalMap[x][y];
+
+                // Searching for nearest place to drink
+                if(predominatingNeed == "thirst" && type == "water"){ 
+                    var distanceX = x-mob.x;
+                    var distanceY = y-mob.y;
+                    var distance = Math.sqrt(distanceX*distanceX + distanceY*distanceY);
                     if(!mob.closestTarget.target || distance < mob.closestTarget.distance){
                         mob.closestTarget.x = x;
                         mob.closestTarget.y = y;
@@ -187,14 +160,12 @@ function moveMobs(){
                         mob.closestTarget.type = "water";
                     }
                 }
-            }
 
-            // Searching for nearest place to eat
-            if(predominatingNeed == "hunger" && type == "food"){ 
-                var distanceX = x-mob.x;
-                var distanceY = y-mob.y;
-                var distance = Math.sqrt(distanceX*distanceX + distanceY*distanceY);
-                if(distance <= ((mob.fov*10)+5)){
+                // Searching for nearest place to eat
+                if(predominatingNeed == "hunger" && type == "food"){ 
+                    var distanceX = x-mob.x;
+                    var distanceY = y-mob.y;
+                    var distance = Math.sqrt(distanceX*distanceX + distanceY*distanceY);
                     if(!mob.closestTarget.target || distance < mob.closestTarget.distance){
                         mob.closestTarget.x = x;
                         mob.closestTarget.y = y;
@@ -210,29 +181,25 @@ function moveMobs(){
 
         // Displaying nearest place to drink
         if(mob.closestTarget.target){
-            text(mob.id, mob.closestTarget.x+5, mob.closestTarget.y-5);
-            text("("+mob.closestTarget.x+","+mob.closestTarget.y+")", mob.closestTarget.x, mob.closestTarget.y-15);
+            var targetX = (mob.closestTarget.x*tileSize);
+            var targetY = (mob.closestTarget.y*tileSize);
+
             fill(color("purple"))
-            circle(mob.closestTarget.x+5, mob.closestTarget.y+5, 10);
+            circle(targetX+(tileSize/2), targetY+(tileSize/2), tileSize);
 
             fill(color("white"))
             switch (mob.closestTarget.type) {
                 case "water":
-                    text("Going to water", mob.x, mob.y+15);
+                    text("Going to water", (mob.x*tileSize)+(tileSize/2), (mob.y*tileSize)+(tileSize/2)+15);
                     break;
 
                 case "food":
-                        text("Going to food", mob.x, mob.y+15);
+                        text("Going to food", (mob.x*tileSize)+(tileSize/2), (mob.y*tileSize)+(tileSize/2)+15);
                         break;
             
                 default:
                     break;
             }
-            
-        }
-        else{
-            fill(color("white"))
-            text("Wandering : "+predominatingNeed, mob.x, mob.y+15);
         }
         
         
@@ -240,11 +207,11 @@ function moveMobs(){
 
 
         if(mob.closestTarget.target){
-            if(mob.closestTarget.dX <= -10) mob.nextMove = "W";
-            else if(mob.closestTarget.dX >= 10) mob.nextMove = "E";
+            if(mob.closestTarget.dX <= -1) mob.nextMove = "W";
+            else if(mob.closestTarget.dX >= 1) mob.nextMove = "E";
             else{ // We are at the spot
-                if(mob.closestTarget.dY <= -10) mob.nextMove = "N";
-                else if(mob.closestTarget.dY >= 10) mob.nextMove = "S";
+                if(mob.closestTarget.dY <= -1) mob.nextMove = "N";
+                else if(mob.closestTarget.dY >= 1) mob.nextMove = "S";
                 else{ // We are at the spot
                     switch (mob.closestTarget.type) {
                         case "water":
@@ -253,16 +220,7 @@ function moveMobs(){
                         
                         case "food":
                                 mob.hunger = 0;
-                                for (var m = 0; m < randomMap.length; m++) {
-                                    var el = randomMap[m];
-                                    var x = el[0];
-                                    var y = el[1];
-                                    var type = el[2];
-
-                                    if(type == "food" && x==mob.closestTarget.x && y==mob.closestTarget.y){
-                                        randomMap[m][2] = "land";
-                                    }
-                                }
+                                globalMap[mob.closestTarget.x][mob.closestTarget.y] = "land";
                                 break;
                         
                     
@@ -274,30 +232,29 @@ function moveMobs(){
             }
         }
 
-        // If no spot found, wander around
+        // If target, go to
         if(mob.nextMove){
             switch (mob.nextMove) {
                 case "N":
-                    mob.y-=10;
+                    mob.y--;
                     break;
                 case "S":
-                    mob.y+=10;
+                    mob.y++;
                     break;
                 case "E":
-                    mob.x+=10;
+                    mob.x++;
                     break;
                 case "W":
-                    mob.x-=10;
+                    mob.x--;
                     break;
             
                 default:
                     break;
             }
         }
-        else{
+        else{ // Wander around
             var destination;
             if(mob.persistance.currentPersistance > 0){
-                
                 mob.persistance.currentPersistance--;
             }
             else{
@@ -306,20 +263,20 @@ function moveMobs(){
             destination = mob.persistance.persistanceMove;
             switch (destination) {
                 case 1:
-                    mob.y-=10;
+                    mob.y--;
                     break;
                 case 2:
-                    mob.y+=10;
+                    mob.y++;
                     break;
                 case 3:
-                    mob.x+=10;
+                    mob.x++;
                     break;
                 case 4:
-                    mob.x-=10;
+                    mob.x--;
                     break;
             
                 default:
-                    mob.x-=10;
+                    mob.x--;
                     break;
             }
         }
