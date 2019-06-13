@@ -14,15 +14,39 @@ function createMap(){
             if(c < 100) type = "water";
             if(c >= 100 && c < 120) type = "sand";
             if(c >= 120 && c < 255) type = "land";
+            globalMap[x][y] = type;
+        }
+    }
 
-            // Generating food
-            if(type == "land"){ 
-                var r = Math.floor(Math.random() * 100);
-                if(r > 95){
-                    type = "food";
+    generateFood();
+}
+
+function generateFood(){
+    var maxFood = 500;
+    var foodCount = 0;
+    for (var x = 0; x < globalMap.length; x++) {
+        for (var y = 0; y < globalMap[x].length; y++) {
+            var type = globalMap[x][y];
+            if(type == "food"){
+                foodCount++;
+            }
+        }
+    }
+    while(foodCount<maxFood){
+        for (var x = 0; x < globalMap.length; x++) {
+            for (var y = 0; y < globalMap[x].length; y++) {
+                if(foodCount < maxFood){
+                    var type = globalMap[x][y];
+    
+                    if(type == "land"){ 
+                        var r = Math.floor(Math.random() * 20)+1;
+                        if(r == 10){
+                            globalMap[x][y] = "food";
+                            foodCount++;
+                        }
+                    }
                 }
             }
-            globalMap[x][y] = type;
         }
     }
 }
@@ -32,7 +56,7 @@ var mobs = [];
 
 function setup() {
     createCanvas(canvasX, canvasY);
-    frameRate(2);
+    frameRate(30);
 
     createMap();
     createMobs();
@@ -43,8 +67,8 @@ function draw() {
 
     drawMap();
     
-    moveMobs();
     updateMobs();
+    moveMobs();
     drawMobs();
 }
 
@@ -143,6 +167,7 @@ function moveMobs(){
 
         for (var x = minX; x < maxX; x++) {
             for (var y = minY; y < maxY; y++) {
+
                 var type = globalMap[x][y];
 
                 // Searching for nearest place to drink
@@ -221,6 +246,7 @@ function moveMobs(){
                         case "food":
                                 mob.hunger = 0;
                                 globalMap[mob.closestTarget.x][mob.closestTarget.y] = "land";
+                                generateFood();
                                 break;
                         
                     
