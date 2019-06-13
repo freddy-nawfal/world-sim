@@ -286,20 +286,25 @@ function moveMobs() {
             destination = mob.persistance.persistanceMove;
             switch (destination) {
                 case 1:
-                    mob.y--;
+                    if (globalMap[mob.x][mob.y - 1] != 'water') {
+                        mob.y--;
+                    }
                     break;
                 case 2:
-                    mob.y++;
+                    if (globalMap[mob.x][mob.y + 1] != 'water') {
+                        mob.y++;
+                    }
                     break;
                 case 3:
-                    mob.x++;
-                    break;
-                case 4:
-                    mob.x--;
+                    if (globalMap[mob.x + 1][mob.y] != 'water') {
+                        mob.x++;
+                    }
                     break;
 
                 default:
-                    mob.x--;
+                    if (globalMap[mob.x - 1][mob.y] != 'water') {
+                        mob.x--;
+                    }
                     break;
             }
         }
